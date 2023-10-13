@@ -1,0 +1,207 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#define ARRAY_SIZE 59                                                              // best to have a prime number as the size of the hashtable as this reduces the posibilities of collisions.
+#define STRING_SIZE 20                                                             // defining the maximum size of a string that will be read in
+#define NAME_PROMPT "Enter term to get frequency or type \"quit\" to escape\n>>> " // invitation to the user
+#define NEW_LINE_PROMPT ">>> "                                                     // invitation to the user where the user should input the name
+
+typedef struct Names //creating an struct of name, which will have a key, in this case a ,name and a value, being the number of times this key appears.
+{
+    char name[STRING_SIZE];
+    int value;
+} Names;
+
+Names *hashTable[ARRAY_SIZE]; // creating a new object of type names, being the hashtable and setting its size to 59.
+int collisions = 0;           // variable that will count the amount of collisions, initialising this to 0.
+int num_terms = 0;            // variable that will be used to count the number of unique elements in the hashtable
+
+// hashing function that takes the ASCI values of the characters of a string and adds them, dividing them by the size of the array in order
+// to obtain the cell value for each string in the hash table.
+int hash1(char *s)
+{
+    int hash = 0;
+    while (*s)
+    {
+        hash = (hash + *s - 'A') % ARRAY_SIZE;
+        s++;
+    }
+    return hash;
+}
+
+// function to set all cells in hashtable to NULL, this isnt used or asked for, but added to skeleton as another function that could be important.
+void resetHash()
+{
+    for (int i = 0; i < ARRAY_SIZE; i++)//iterates through the entire hashtable setting the cell value to NULL
+    {
+        hashTable[i] = NULL;
+    }
+}
+
+
+// returns the element with name name or NULL if the element is not present.
+Names *search(char *name)
+{
+    int index = hash1(name); //declaring a variable index that will take the value returned after calling upon the hashfunction with name x.
+    for (int i = 0; i < ARRAY_SIZE; i++) //for loop that will iterate through the array. (method of implementing linear probing)
+    {
+        int atmpt = (i + index) % ARRAY_SIZE; //declaring a variable that will take the value of the iteration + the value stored in index, modulus of the size of the hashtable.
+        if (hashTable[atmpt] != NULL && strncmp(hashTable[atmpt]->name, name, ARRAY_SIZE) == 0) //checking if the cell number "atmpt" is full and if the name stored in that cell is equal to the name being searched for
+        {
+            return hashTable[atmpt]; //returns the index in which the name is stored in the hashtable.
+        }
+    }
+    return NULL; //If the name isnt found, the function returns NULL.
+}
+
+//Function that is used to insert names into the hashmap
+int insert(Names *name)
+{
+    if (name == NULL) //if the name passed to the function is null the function wont return anything. Simply checking that a name is being passed.
+    {
+        return 0;
+    }
+    int index = hash1(name->name); //Similar to the search function, we declare an index of type int that will store the value returned after the name is passed to the hashfunction.
+    for (int i = 0; i < ARRAY_SIZE; i++) //Iterate from 0 to the size of the hashtable (used for linear probing).
+    {
+        int atmpt = (i + index) % ARRAY_SIZE; //storing the value index as the sum of i and index and then the modulus of 59
+        if (hashTable[atmpt] == NULL) //if the cell at index atmpt is empty
+        {
+            hashTable[atmpt] = name; //the name that is intended to be inserted will be inserted in said cell
+            return 1;
+        }
+        else
+            collisions++; //otherwise, the collisions counter will be increased as the cell will be full and the next cell will have to be found, aka linear probing
+    }
+    return 0;
+}
+
+//function that creates a new object of type name and allocates its memory in the heap.
+Names *createNewElement(char *name)
+{
+    Names *newName = (Names *)malloc(sizeof(Names));
+    strcpy(newName->name, name); //function from the string.h library that copies a string into the desired final location, in this case, the key value of the new object.
+    newName->value = 1; //setting the value of this new key to one.
+    insert(newName); //inserting this new object into the hashtable using the insert function.
+    return newName; //returns the object newName of type names.
+}
+
+// prints the number of occurences, or 0 if not in the file.
+int printNumberOfOccurences(char *name)
+{
+    Names *this = search(name); //object this of type Names is equal to the value returned by the search function given a name
+    if (this != NULL) //if the value returned from the search fucntion is not NULL
+    {
+        return this->value; //the function returns the value of the key, the number of times the key was read in.
+    }
+    else
+    {
+        return 0; //otherwise, the name isnt found and therefore the function returns 0 meaning that it isnt in the hashtable.
+    }
+}
+
+// searches the name in the array, if it is there increment its count, if not, add it
+void addOrIncrement(char *name)
+{
+    Names *this = search(name); //same as previously explained in printNum... function
+    if (this != NULL)  //if the element is found in the hashtable
+    {
+        this->value++; //the value of the key will increase, the number of times the samae name has been encountered
+        return;
+    }
+    else //otherwise, we create a new element which will be stored in the hashable and we increase the numbr of terms stored in the hashtable.
+    {
+        createNewElement(name);
+        num_terms++;
+    }
+}
+
+// From assignment 0
+// Reads strings of alpha numeric characters from input file. Truncates strings which are too long to string_max-1
+void next_token(char *buf, FILE *f, int string_max)
+{
+    // start by skipping any characters we're not interested in
+    buf[0] = fgetc(f);
+    while (!isalnum(buf[0]) && !feof(f))
+    {
+        buf[0] = fgetc(f);
+    }
+    // read string of alphanumeric characters
+    int i = 1;
+    for (;;)
+    {
+        buf[i] = fgetc(f); // get next character from file
+        if (!isalnum(buf[i]))
+        {
+            if (buf[i] != ' ')
+            {          // we still want to keep spaces
+                break; // only load letters and numbers
+            }
+        } // only load letters and numbers
+        if (feof(f))
+        {
+            break;
+        } // file ended?
+        if (i < (string_max - 1))
+        {
+            ++i;
+        } // truncate strings that are too long
+    }
+    buf[i] = '\0'; // NULL terminate the string
+}
+
+//  Reads the contents of a file and adds them to the hash table - returns 1 if file was successfully read and 0 if not.
+int load_file(char *fname)
+{
+    FILE *file = fopen(fname, "r");
+    char buf[STRING_SIZE];
+
+    // boiler plate code to ensure we can open the file
+    if (!file)
+    {
+        printf("Unable to open %s\n", fname);
+        return 0;
+    }
+
+    // read until the end of the file
+    while (!feof(file))
+    {
+        next_token(buf, file, STRING_SIZE);
+        addOrIncrement(buf);
+    }
+
+    printf("File %s loaded\n", fname);
+    float load = ((float)num_terms/ARRAY_SIZE);
+    printf(" Capacity: %i\n Num Terms: %i\n Collisions: %i\n Load: %f\n", ARRAY_SIZE, num_terms, collisions, load);
+
+    fclose(file);
+
+    return 1;
+}
+
+//function used for the interaction of the user, will output determined messages and reads in the users input and acts upon said input.
+void userInput(){
+    printf("%s", NAME_PROMPT );
+    char answer[STRING_SIZE];
+    scanf("%s", answer); //after the user is requested to input a key, said key is read in and stored in the array of characters "answer"
+    char quit[] ={"quit"}; //creating an array of chars named quit that is set to "quit".
+    while(strcmp(answer, quit) != 0){ //while the comparison of the answer input by the user isnt equal to quit.
+        if(search(answer)!= NULL){ //if the key input is found in the hashtable
+            int occur = printNumberOfOccurences(answer); //we store the number of occurances of said key in occur
+            printf("%s - %d \n", answer, occur); //and we print out the key and its occurances
+        }
+        else{printf("%s - 0 \n", answer);} //otherwise, we print out the key and 0, meaning that it wasnt present in the hashtable
+
+        printf("%s", NEW_LINE_PROMPT); //we print out "NEW_LINE_PROMPT"
+        scanf("%s", answer); //and we take in another input from the user as we dont want to created an infinit loop
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    load_file (argv[1]); //pass the file we wish to load into the load function provided from assinment 0
+    userInput(); //call on the user input function to get the user input to deal with the hashtable.
+    return 0;
+}
