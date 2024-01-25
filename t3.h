@@ -1,0 +1,29 @@
+
+#ifndef T3_H_
+#define T3_H_
+#define MAX_VERTICES 10000
+#define MAX_NAME_LENTGH 50
+
+typedef struct Graph{
+    int numVertices;
+    int **adjacency_matrix;
+}Graph;
+
+typedef struct stop{
+    int StopId;
+    char name[MAX_NAME_LENTGH];
+    double Latitude;
+    double Longitude;
+    int count;
+}stop;
+
+typedef struct edges{
+    int vert1, vert2, weight;
+}edges;
+
+int load_edges ( char *fname ); //loads the edges from the CSV file of name fname
+int load_vertices ( char *fname );  //loads the vertices from the CSV file of name fname
+void shortest_path(int startNode, int endNode); // prints the shortest path between startNode and endNode, if there is any
+void free_memory ( void ) ; // frees any memory that was used
+
+#endif
